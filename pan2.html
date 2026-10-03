@@ -1,0 +1,217 @@
+/* =========================================================
+   MIGA DORADA — Lógica de la tienda
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   🔧 CONFIGURACIÓN — ¡CAMBIA ESTOS DATOS POR LOS TUYOS!
+   ---------------------------------------------------------
+   WHATSAPP_NUMBER: Escribe tu número real aquí.
+   Formato: código de país + número, SIN +, SIN espacios,
+   SIN guiones ni paréntesis.
+   
+   Ejemplo para Perú (código 51):
+     Número: 987 654 321  →  "51987654321"
+   
+   Ejemplo para México (código 52):
+     Número: 55 1234 5678  →  "525512345678"
+   --------------------------------------------------------- */
+const WHATSAPP_NUMBER = "51999999999"; // ⬅️ Reemplaza por tu número real
+
+/* ---------------------------------------------------------
+   Catálogo de productos
+   Para reemplazar imágenes: cambia la URL de "img" por la
+   ruta de tu foto (ej: "imagenes/pan-masa-madre.jpg") o por
+   un enlace de internet.
+   --------------------------------------------------------- */
+const PRODUCTS = [
+    {
+        id: 1,
+        name: "Pan de Masa Madre",
+        desc: "Fermentación lenta de 24 horas. Corteza crujiente y miga alveolada con sabor profundo.",
+        price: 18.00,
+        category: "pan",
+        tag: "Clásico",
+        img: "https://images.unsplash.com/photo-1585478259715-8d9a1c9f1e0e?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        id: 2,
+        name: "Croissant de Mantequilla",
+        desc: "Hojaldre francés elaborado con mantequilla de verdad. Dorado, ligero y aromático.",
+        price: 8.50,
+        category: "dulce",
+        tag: "Favorito",
+        img: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        id: 3,
+        name: "Pan Integral Multigrano",
+        desc: "Mezcla de avena, linaza y girasol. Fibra natural para empezar el día con energía.",
+        price: 15.00,
+        category: "pan",
+        tag: "Saludable",
+        img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        id: 4,
+        name: "Pan de Chocolate",
+        desc: "Relleno generoso de chocolate de origen. Un capricho que se derrite en la boca.",
+        price: 12.00,
+        category: "dulce",
+        tag: "Nuevo",
+        img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        id: 5,
+        name: "Galletas Artesanales",
+        desc: "Chispas de chocolate y un toque de vainilla. Crujientes por fuera, tiernas por dentro.",
+        price: 6.00,
+        category: "dulce",
+        tag: "Docena",
+        img: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        id: 6,
+        name: "Rollo de Canela",
+        desc: "Espiral suave con canela de Ceilán y glaseado de queso crema. Recién horneado.",
+        price: 10.00,
+        category: "dulce",
+        tag: "Calientito",
+        img: "https://images.unsplash.com/photo-1509365465985-25d11c17e812?auto=format&fit=crop&w=800&q=80"
+    }
+];
+
+/* ---------------------------------------------------------
+   Estado del carrito
+   --------------------------------------------------------- */
+let cart = []; // [{ id, qty }]
+
+/* ---------------------------------------------------------
+   Referencias al DOM
+   --------------------------------------------------------- */
+const productsGrid   = document.getElementById("productsGrid");
+const filterButtons  = document.querySelectorAll(".filter-btn");
+const cartBtn        = document.getElementById("cartBtn");
+const cartPanel      = document.getElementById("cartPanel");
+const cartOverlay    = document.getElementById("cartOverlay");
+const cartClose      = document.getElementById("cartClose");
+const cartBody       = document.getElementById("cartBody");
+const cartCount      = document.getElementById("cartCount");
+const cartTotal      = document.getElementById("cartTotal");
+const sendWhatsapp   = document.getElementById("sendWhatsapp");
+const toast          = document.getElementById("toast");
+const menuToggle     = document.getElementById("menuToggle");
+const navMenu        = document.getElementById("navMenu");
+const header         = document.getElementById("header");
+
+/* =========================================================
+   RENDERIZAR PRODUCTOS
+   ========================================================= */
+function renderProducts(filter = "all") {
+    const list = filter === "all"
+        ? PRODUCTS
+        : PRODUCTS.filter(p => p.category === filter);
+
+    if (!list.length) {
+        productsGrid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:#7A685A;">No hay productos en esta categoría.</p>`;
+        return;
+    }
+
+    productsGrid.innerHTML = list.map(p => `
+        <article class="product-card" data-id="${p.id}">
+            <div class="product-image">
+                <img
+                    src="${p.img}"
+                    alt="${p.name}"
+                    loading="lazy"
+                    onerror="this.onerror=null;this.src='https://placehold.co/600x400/B5651D/FFF8EE?text=${encodeURIComponent(p.name)}';">
+                <span class="product-tag ${p.category === 'dulce' ? 'dulce' : ''}">${p.tag}</span>
+            </div>
+            <div class="product-body">
+                <h3 class="product-name">${p.name}</h3>
+                <p class="product-desc">${p.desc}</p>
+                <div class="product-footer">
+                    <div class="product-price">
+                        S/ ${p.price.toFixed(2)}
+                        <small>Precio unitario</small>
+                    </div>
+                    <button class="add-btn" data-add="${p.id}" aria-label="Agregar ${p.name} al pedido">
+                        <i class="fa-solid fa-plus"></i> Agregar
+                    </button>
+                </div>
+            </div>
+        </article>
+    `).join("");
+}
+
+/* =========================================================
+   FILTROS
+   ========================================================= */
+filterButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+        filterButtons.forEach(b => {
+            b.classList.remove("active");
+            b.setAttribute("aria-selected", "false");
+        });
+        btn.classList.add("active");
+        btn.setAttribute("aria-selected", "true");
+        renderProducts(btn.dataset.filter);
+    });
+});
+
+/* =========================================================
+   AGREGAR AL CARRITO (delegación de eventos)
+   ========================================================= */
+productsGrid.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-add]");
+    if (!btn) return;
+    const id = Number(btn.dataset.add);
+    addToCart(id);
+});
+
+function addToCart(id) {
+    const existing = cart.find(item => item.id === id);
+    if (existing) {
+        existing.qty += 1;
+    } else {
+        cart.push({ id, qty: 1 });
+    }
+    updateCart();
+    bumpCartIcon();
+    const prod = PRODUCTS.find(p => p.id === id);
+    showToast(`¡${prod.name} agregado al pedido!`);
+}
+
+/* =========================================================
+   ACTUALIZAR CARRITO
+   ========================================================= */
+function updateCart() {
+    // Contador del header
+    const totalItems = cart.reduce((sum, i) => sum + i.qty, 0);
+    cartCount.textContent = totalItems;
+
+    // Cuerpo del carrito
+    if (!cart.length) {
+        cartBody.innerHTML = `
+            <div class="cart-empty">
+                <i class="fa-solid fa-basket-shopping"></i>
+                <p>Tu pedido está vacío</p>
+                <small>Agrega productos del catálogo para comenzar</small>
+            </div>
+        `;
+    } else {
+        cartBody.innerHTML = cart.map(item => {
+            const p = PRODUCTS.find(prod => prod.id === item.id);
+            if (!p) return "";
+            return `
+                <div class="cart-item" data-id="${p.id}">
+                    <div class="cart-item-img">
+                        <img src="${p.img}" alt="${p.name}"
+                             onerror="this.onerror=null;this.src='https://placehold.co/140x140/B5651D/FFF8EE?text=${encodeURIComponent(p.name)}';">
+                    </div>
+                    <div class="cart-item-info">
+                        <h4>${p.name}</h4>
+                        <span class="item-price">S/ ${(p.price * item.qty).toFixed(2)}</span>
+                    </div>
+                    <div class="cart-item-actions">
+                        <div class="qty-control">
+                            <button class="qty-btn" data-dec="${p.id}" aria-label="Disminuir cantidad">−
